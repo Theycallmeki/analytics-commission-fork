@@ -112,8 +112,8 @@ function processSheet(rows) {
     .map(s => ({ cat: s.cat, score: +(s.scoreSum / s.count).toFixed(2) }))
     .sort((a, b) => b.score - a.score);
 
-  return { totals, branches, monthly, satisfaction, rowCount: data.length };
-}
+return { totals, branches, monthly, satisfaction, rowCount: data.length, raw:data };}
+
 
 /* ── CSS ── */
 const css = `
@@ -360,8 +360,25 @@ export default function Dashboard() {
       </div>
     </div>
   );
+const { totals, branches, monthly, satisfaction, rowCount, raw } = data;
 
-  const { totals, branches, monthly, satisfaction, rowCount } = data;
+const dataSource = raw;
+
+const filteredMonthly = branch === "All"
+  ? monthly
+  : monthly.map((m, i) => {
+      const fullMonth = MONTH_ORDER[i];
+
+      const rows = dataSource.filter(r =>
+        r["Month"] === fullMonth && r["Branch"] === branch
+      );
+
+      return {
+        m: m.m,
+        sales: rows.reduce((s, r) => s + (r["Sales"] || 0), 0),
+        target: rows.reduce((s, r) => s + (r["Target Sales"] || 0), 0),
+      };
+    });
   const active     = branch === "All" ? null : branches.find(b => b.name === branch);
   const maxSales   = Math.max(...branches.map(b => b.sales));
   const branchRows = active ? [active] : branches;
@@ -472,29 +489,71 @@ export default function Dashboard() {
           {/* TOP CHART ROW */}
           <div className="chart-row-top">
 
-           {/* ① Sales vs Target */}
-              <div className="card" style={{ animationDelay:"0s" }}>
+          {/* ① Sales vs Target */}
+                <div className="card" style={{ animationDelay:"0s" }}>
                 <div className="card-header">
-                  <span className="card-title">Sales vs Target per Month</span>
-                  <div className="legend-row">
-                    <span className="legend-item"><span className="legend-dot" style={{ background:"#6366f1" }}/>Sales</span>
-                    <span className="legend-item"><span className="legend-dot" style={{ background:"#10b981" }}/>Target</span>
-                  </div>
+                    <span className="card-title">Sales vs Target per Month</span>
+
+                    <div className="legend-row">
+                    <span className="legend-item">
+                        <span
+                        className="legend-dot"
+                        style={{ background:"#02a4d5" }}
+                        />
+                        Sales
+                    </span>
+
+                    <span className="legend-item">
+                        <span
+                        className="legend-dot"
+                        style={{ background: branch === "All" ? "#10b981" : PALETTE[branch] }}
+                        />
+                        Target
+                    </span>
+                    </div>
                 </div>
 
                 <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={monthly} margin={{ top:4, right:4, left:-14, bottom:0 }} barCategoryGap="25%" barGap={3}>
-                    <XAxis dataKey="m" tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}K`} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill:"rgba(255,255,255,.03)" }} />
+                    <BarChart
+                    data={filteredMonthly}
+                    margin={{ top:4, right:4, left:-14, bottom:0 }}
+                    barCategoryGap="25%"
+                    barGap={3}
+                    >
+                    <XAxis
+                        dataKey="m"
+                        tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }}
+                        axisLine={false}
+                        tickLine={false}
+                    />
 
-                    <Bar dataKey="target" name="Target" fill="#10b981" radius={[3,3,0,0]} opacity={0.5} maxBarSize={14} />
-                    <Bar dataKey="sales"  name="Sales"  fill="#6366f1" radius={[3,3,0,0]} maxBarSize={14} />
+                    <YAxis
+                        tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={v => `${(v/1000).toFixed(0)}K`}
+                    />
 
-                  </BarChart>
+                    <Tooltip
+                        content={<CustomTooltip />}
+                        cursor={{ fill:"rgba(255,255,255,.03)" }}
+                    />
+
+                    {/* Target */}
+                 <Bar
+                    dataKey="target"
+                    name="Target"
+                    fill={PALETTE[branch] || "#10b981"}                    />
+
+                    <Bar
+                    dataKey="sales"
+                    name="Sales"
+                    fill="#02a4d5"   // fixed color (consistent everywhere)
+                    />
+                    </BarChart>
                 </ResponsiveContainer>
-              </div>
-            {/* ② Customer Count */}
+                </div>
+                {/* ② Customer Count */}
             <div className="card" style={{ animationDelay:".06s" }}>
               <div className="card-header">
                 <span className="card-title">Customer Count by Month</span>
@@ -517,8 +576,14 @@ export default function Dashboard() {
   <div className="card-header">
     <span className="card-title">Cost &amp; Expenses</span>
     <div className="legend-row">
-      <span className="legend-item"><span className="legend-dot" style={{ background:"#6366f1" }}/>Cost</span>
-      <span className="legend-item"><span className="legend-dot" style={{ background:"#10b981" }}/>Expenses</span>
+      <span
+        className="legend-dot"
+        style={{ background:"#02a4d5" }}   // Sales (fixed color)
+        />
+
+        <span
+        className="legend-dot"
+        style={{ background: PALETTE[branch] || "#10b981" }}        />
     </div>
   </div>
 
@@ -530,29 +595,29 @@ export default function Dashboard() {
       barGap={3}
     >
       {/* Horizontal grid lines */}
-      <CartesianGrid horizontal={true} vertical={false} stroke="#334155" strokeDasharray="3 3" />
+                <CartesianGrid horizontal={true} vertical={false} stroke="#334155" strokeDasharray="3 3" />
 
-      <XAxis 
-        dataKey="m" 
-        tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} 
-        axisLine={false} 
-        tickLine={false} 
-      />
-      <YAxis 
-        tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} 
-        axisLine={false} 
-        tickLine={false} 
-        tickFormatter={v => `${(v/1000).toFixed(0)}K`} 
-      />
+                <XAxis 
+                    dataKey="m" 
+                    tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} 
+                    axisLine={false} 
+                    tickLine={false} 
+                />
+                <YAxis 
+                    tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickFormatter={v => `${(v/1000).toFixed(0)}K`} 
+                />
 
-      <Tooltip content={<CustomTooltip />} cursor={{ fill:"rgba(255,255,255,.03)" }} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill:"rgba(255,255,255,.03)" }} />
 
-      <Bar dataKey="cost"     name="Cost"     fill="#6366f1" radius={[3,3,0,0]} maxBarSize={14} />
-      <Bar dataKey="expenses" name="Expenses" fill="#10b981" radius={[3,3,0,0]} maxBarSize={14} opacity={0.85} />
+                <Bar dataKey="cost"     name="Cost"     fill="#6366f1" radius={[3,3,0,0]} maxBarSize={14} />
+                <Bar dataKey="expenses" name="Expenses" fill="#10b981" radius={[3,3,0,0]} maxBarSize={14} opacity={0.85} />
 
-    </BarChart>
-  </ResponsiveContainer>
-</div>
+                </BarChart>
+            </ResponsiveContainer>
+            </div>
           </div>
 
           {/* BOTTOM CHART ROW */}
@@ -576,14 +641,14 @@ export default function Dashboard() {
             </div>
 
           {/* ⑤ Profit vs Sales by Branch — grouped horizontal bar chart */}
-<div className="card" style={{ animationDelay:".24s" }}>
-  <div className="card-header">
-    <span className="card-title">Profit vs Sales by Branch</span>
-    <div className="legend-row">
-      <span className="legend-item"><span className="legend-dot" style={{ background:"#6366f1" }}/>Sales</span>
-      <span className="legend-item"><span className="legend-dot" style={{ background:"#10b981" }}/>Profit</span>
-    </div>
-  </div>
+            <div className="card" style={{ animationDelay:".24s" }}>
+            <div className="card-header">
+                <span className="card-title">Profit vs Sales by Branch</span>
+                <div className="legend-row">
+                <span className="legend-dot" style={{ background:"#02a4d5" }}/>   
+            <span className="legend-item"><span className="legend-dot" style={{ background:"#10b981" }}/>Profit</span>
+                </div>
+            </div>
 
   {/* Responsive container restored */}
   <ResponsiveContainer width="100%" height={200}>
@@ -617,7 +682,12 @@ export default function Dashboard() {
       <Tooltip content={<CustomTooltip />} cursor={{ fill:"rgba(255,255,255,.03)" }} />
 
       {/* Sales */}
-      <Bar dataKey="Sales" fill="#6366f1" radius={[0,4,4,0]} maxBarSize={13} />
+      <Bar
+        dataKey="Sales"
+        fill={branch === "All" ? "#6366f1" : PALETTE[branch]}
+        radius={[0,4,4,0]}
+        maxBarSize={13}
+        />
 
       {/* Profit */}
       <Bar dataKey="Profit" fill="#10b981" radius={[0,4,4,0]} maxBarSize={13} opacity={0.85} />
