@@ -1,18 +1,64 @@
-import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
+/* ── Animations ── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes navGlow {
+  0%, 100% { text-shadow: 0 0 12px rgba(99,102,241,.3), 0 0 0px rgba(99,102,241,0); }
+  50%       { text-shadow: 0 0 28px rgba(99,102,241,.6), 0 0 48px rgba(99,102,241,.18); }
+}
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,.5); }
+  50%       { box-shadow: 0 0 0 5px rgba(99,102,241,0); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .home { min-height: 100vh; background: #080c14; color: #e2e8f0; font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
 
 /* NAV */
-.home-nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 32px; border-bottom: 1px solid #1a2640; position: sticky; top: 0; background: #080c14; z-index: 100; }
-.nav-brand { display: flex; align-items: center; gap: 10px; }
-.nav-dot { width: 8px; height: 8px; border-radius: 50%; background: #6366f1; }
-.nav-logo { font-size: 15px; font-weight: 600; color: #f1f5f9; letter-spacing: -.02em; }
-.nav-cta { font-size: 12px; font-weight: 500; padding: 7px 18px; border-radius: 99px; background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.35); color: #818cf8; cursor: pointer; transition: .15s; font-family: 'DM Sans', sans-serif; }
-.nav-cta:hover { background: rgba(99,102,241,.25); border-color: rgba(99,102,241,.6); }
+.home-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px 32px;
+  border-bottom: 1px solid #1a2640;
+  position: sticky;
+  top: 0;
+  background: #080c14;
+  z-index: 100;
+}
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.nav-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #6366f1;
+  flex-shrink: 0;
+  animation: dotPulse 2.4s ease-in-out infinite;
+}
+.nav-logo {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  background: linear-gradient(90deg, #f1f5f9 0%, #818cf8 35%, #f1f5f9 55%, #818cf8 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear 0.5s infinite, navGlow 3.5s ease-in-out 0.5s infinite;
+}
 
 /* HERO */
 .hero { padding: 72px 32px 56px; max-width: 900px; margin: 0 auto; text-align: center; position: relative; }
@@ -88,12 +134,6 @@ const css = `
 .pill { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 99px; font-family: 'DM Mono', monospace; }
 .pill-g { background: rgba(16,185,129,.1); color: #10b981; border: 1px solid rgba(16,185,129,.2); }
 .pill-a { background: rgba(245,158,11,.1); color: #f59e0b; border: 1px solid rgba(245,158,11,.2); }
-
-/* SPARKLINE */
-.chart-card { background: #0d1625; border: 1px solid #1a2640; border-radius: 16px; padding: 22px 24px; margin-bottom: 14px; }
-.chart-label { font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: #334155; margin-bottom: 16px; }
-.sparkline { display: flex; align-items: flex-end; gap: 4px; height: 64px; }
-.spark-bar { border-radius: 4px 4px 0 0; flex: 1; }
 
 /* FEATURES */
 .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
@@ -188,27 +228,9 @@ const FEATURES = [
   },
 ];
 
-const SPARK_DATA = [42, 58, 51, 67, 73, 88, 95, 82, 90, 105, 78, 112];
-
 export default function Home() {
   const navigate = useNavigate();
-  const sparkRef = useRef(null);
 
-  useEffect(() => {
-    if (!sparkRef.current) return;
-    const max = Math.max(...SPARK_DATA);
-    sparkRef.current.innerHTML = "";
-    SPARK_DATA.forEach((v) => {
-      const bar = document.createElement("div");
-      bar.className = "spark-bar";
-      const pct = Math.round((v / max) * 100);
-      bar.style.height = pct + "%";
-      bar.style.background = `rgba(99,102,241,${(0.3 + (pct / 100) * 0.7).toFixed(2)})`;
-      sparkRef.current.appendChild(bar);
-    });
-  }, []);
-
-  // Navigate to /dashboard and pass branch name via router state
   const goToBranch = (branchName) => {
     navigate("/dashboard", { state: { branch: branchName } });
   };
@@ -218,15 +240,12 @@ export default function Home() {
       <style>{css}</style>
       <div className="home">
 
-        {/* NAV */}
+        {/* NAV — centered, shimmer + glow on brand name */}
         <nav className="home-nav">
           <div className="nav-brand">
             <div className="nav-dot" />
-            <span className="nav-logo">BranchIQ</span>
+            <span className="nav-logo">Likha Organika</span>
           </div>
-          <button className="nav-cta" onClick={() => navigate("/dashboard")}>
-            Open Dashboard →
-          </button>
         </nav>
 
         {/* HERO */}
@@ -250,22 +269,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* STATS STRIP */}
-        <div className="stats-strip">
-          {[
-            { val: "4",    lbl: "Branches" },
-            { val: "₱M+", lbl: "Total Sales" },
-            { val: "12",   lbl: "Months Tracked" },
-            { val: "10",   lbl: "Satisfaction Scale" },
-          ].map((s) => (
-            <div className="stat" key={s.lbl}>
-              <div className="stat-val">{s.val}</div>
-              <div className="stat-lbl">{s.lbl}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* BRANCH CARDS + SPARKLINE */}
+        {/* BRANCH CARDS */}
         <div className="home-section">
           <div className="section-eyebrow">Branch Overview</div>
           <div className="section-title">All Locations at a Glance</div>
@@ -302,11 +306,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-
-          <div className="chart-card">
-            <div className="chart-label">Monthly Sales Trend — All Branches</div>
-            <div className="sparkline" ref={sparkRef} />
-          </div>
         </div>
 
         {/* FEATURES */}
@@ -330,7 +329,7 @@ export default function Home() {
         <footer className="home-footer">
           <div className="nav-brand">
             <div className="nav-dot" style={{ width: 6, height: 6 }} />
-            <span className="footer-txt">BranchIQ · Exempted Records Analytics</span>
+            <span className="footer-txt">Likha Organika · Analytics Dashboard</span>
           </div>
           <div className="footer-links">
             <button className="footer-link" onClick={() => navigate("/dashboard")}>Dashboard</button>
