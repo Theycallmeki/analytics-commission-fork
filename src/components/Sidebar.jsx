@@ -1,5 +1,4 @@
 import { Link, useLocation } from "react-router-dom";
-import { useState } from "react";
 
 const navItems = [
   {
@@ -40,19 +39,6 @@ const navItems = [
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
-  .sb-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 99;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-  }
-  .sb-overlay.visible {
-    opacity: 1;
-    pointer-events: all;
-  }
   .sb-rail {
     position: fixed;
     top: 0;
@@ -61,21 +47,18 @@ const css = `
     width: 220px;
     background: #080c14;
     border-right: 1px solid #1a2640;
-    padding: 0;
     z-index: 100;
     display: flex;
     flex-direction: column;
-    transform: translateX(-100%);
-    transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
     font-family: 'DM Sans', sans-serif;
+    flex-shrink: 0;
   }
-  .sb-rail.open {
-    transform: translateX(0);
-  }
+
   .sb-top {
     padding: 24px 20px 20px;
     border-bottom: 1px solid #1a2640;
   }
+
   .sb-wordmark {
     font-size: 10px;
     font-weight: 600;
@@ -83,20 +66,36 @@ const css = `
     text-transform: uppercase;
     color: #475569;
     margin-bottom: 4px;
+    font-family: 'DM Mono', monospace;
   }
+
   .sb-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 16px;
     font-weight: 600;
     letter-spacing: -0.02em;
     color: #f1f5f9;
   }
+
+  .sb-brand-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #6366f1;
+    flex-shrink: 0;
+  }
+
   .sb-nav {
     flex: 1;
     padding: 16px 12px;
     display: flex;
     flex-direction: column;
     gap: 2px;
+    overflow-y: auto;
   }
+
   .sb-section-label {
     font-size: 10px;
     font-weight: 500;
@@ -105,7 +104,9 @@ const css = `
     color: #334155;
     padding: 0 8px;
     margin: 8px 0 6px;
+    font-family: 'DM Mono', monospace;
   }
+
   .sb-link {
     display: flex;
     align-items: center;
@@ -118,16 +119,20 @@ const css = `
     font-weight: 500;
     transition: background 0.15s, color 0.15s;
     position: relative;
+    border: 1px solid transparent;
   }
+
   .sb-link:hover {
     background: #0d1625;
     color: #94a3b8;
   }
+
   .sb-link.active {
     background: #0d1625;
     color: #f1f5f9;
-    border: 1px solid #1a2640;
+    border-color: #1a2640;
   }
+
   .sb-link.active::before {
     content: '';
     position: absolute;
@@ -138,91 +143,67 @@ const css = `
     background: #6366f1;
     border-radius: 0 3px 3px 0;
   }
+
   .sb-link-icon {
     display: flex;
     align-items: center;
     flex-shrink: 0;
   }
+
   .sb-footer {
     padding: 16px 20px;
     border-top: 1px solid #1a2640;
   }
+
   .sb-status {
     display: flex;
     align-items: center;
     gap: 8px;
   }
+
   .sb-status-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
     background: #10b981;
     flex-shrink: 0;
+    animation: sbPulse 2s ease-in-out infinite;
   }
+
+  @keyframes sbPulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16,185,129,.4); }
+    50%       { opacity: .8; box-shadow: 0 0 0 4px rgba(16,185,129,0); }
+  }
+
   .sb-status-text {
     font-size: 11px;
     color: #475569;
     font-family: 'DM Mono', monospace;
   }
-  .sb-toggle {
-    position: fixed;
-    top: 16px;
-    left: 16px;
-    z-index: 200;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: #0d1625;
-    border: 1px solid #1a2640;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, left 0.35s cubic-bezier(0.16,1,0.3,1);
-  }
-  .sb-toggle:hover {
-    background: #1a2640;
-    border-color: #2d3f5c;
-  }
-  .sb-toggle.shifted {
-    left: 232px;
+
+  /* Push page content to the right of the sidebar */
+  .sb-page-offset {
+    margin-left: 220px;
+    min-height: 100vh;
+    background: #080c14;
+    flex: 1;
+    min-width: 0;
   }
 `;
 
 export default function Sidebar() {
-  const [open, setOpen] = useState(true);
   const location = useLocation();
 
   return (
     <>
       <style>{css}</style>
 
-      <div
-        className={`sb-overlay ${open ? "visible" : ""}`}
-        onClick={() => setOpen(false)}
-      />
-
-      <div className={`sb-toggle ${open ? "shifted" : ""}`} onClick={() => setOpen(!open)}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round">
-          {open ? (
-            <>
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </>
-          ) : (
-            <>
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </>
-          )}
-        </svg>
-      </div>
-
-      <div className={`sb-rail ${open ? "open" : ""}`}>
+      <div className="sb-rail">
         <div className="sb-top">
-          <div className="sb-wordmark">Workspace</div>
-          <div className="sb-brand">Analytics</div>
+          <div className="sb-brand">
+            <div className="sb-brand-dot" />
+            Analytics
+          </div>
         </div>
 
         <nav className="sb-nav">

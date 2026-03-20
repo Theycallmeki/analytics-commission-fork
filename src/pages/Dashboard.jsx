@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import * as XLSX from "xlsx";
 import {
   LineChart, Line, BarChart, Bar,
@@ -176,11 +177,22 @@ body{background:#080c14;}
 @keyframes pulse{0%,100%{opacity:.2;}50%{opacity:1;}}
 .loading-dots{display:flex;gap:6px;}
 .loading-txt{font-size:12px;color:#475569;font-family:'DM Mono',monospace;}
+
+/* Branch filter — highlight the active branch pill with its own color */
+.fbtn.on-bulacan  { background:rgba(99,102,241,.12); border-color:rgba(99,102,241,.45); color:#818cf8; }
+.fbtn.on-manila   { background:rgba(16,185,129,.1);  border-color:rgba(16,185,129,.4);  color:#34d399; }
+.fbtn.on-pampanga { background:rgba(245,158,11,.1);  border-color:rgba(245,158,11,.4);  color:#fbbf24; }
+.fbtn.on-pangasinan{ background:rgba(244,63,94,.1);  border-color:rgba(244,63,94,.4);   color:#fb7185; }
 `;
 
 export default function Dashboard() {
+  const location = useLocation();
+
+  // If navigated from Home with a branch in state, pre-select it
+  const initialBranch = location.state?.branch ?? "All";
+
   const [data,   setData]   = useState(null);
-  const [branch, setBranch] = useState("All");
+  const [branch, setBranch] = useState(initialBranch);
   const [error,  setError]  = useState(null);
 
   useEffect(() => {
@@ -194,6 +206,14 @@ export default function Dashboard() {
       })
       .catch(e => setError(String(e)));
   }, []);
+
+  // If the router state changes (e.g. user clicks another branch card from Home),
+  // update the active filter
+  useEffect(() => {
+    if (location.state?.branch) {
+      setBranch(location.state.branch);
+    }
+  }, [location.state]);
 
   if (error) return (
     <div className="db">
@@ -235,6 +255,13 @@ export default function Dashboard() {
     { label:"Avg Score",    value: (active ? active.score : totals.avgScore).toFixed(2), sub: "Out of 10" },
   ];
 
+  // Returns the coloured .on-* class for the active filter button
+  const activeBtnClass = (b) => {
+    if (branch !== b) return "";
+    if (b === "All") return "on";
+    return `on on-${b.toLowerCase()}`;
+  };
+
   return (
     <>
       <style>{css}</style>
@@ -250,8 +277,21 @@ export default function Dashboard() {
 
         <div className="filter-row">
           {["All", ...branches.map(b => b.name)].map(b => (
-            <button key={b} className={`fbtn ${branch === b ? "on" : ""}`} onClick={() => setBranch(b)}>
-              {b !== "All" && <span style={{ display:"inline-block", width:7, height:7, borderRadius:"50%", background:PALETTE[b], marginRight:6, verticalAlign:"middle" }} />}
+            <button
+              key={b}
+              className={`fbtn ${activeBtnClass(b)}`}
+              onClick={() => setBranch(b)}
+            >
+              {b !== "All" && (
+                <span style={{
+                  display: "inline-block",
+                  width: 7, height: 7,
+                  borderRadius: "50%",
+                  background: PALETTE[b],
+                  marginRight: 6,
+                  verticalAlign: "middle",
+                }} />
+              )}
               {b}
             </button>
           ))}
@@ -378,7 +418,19 @@ export default function Dashboard() {
             <div className="card-label">Branch at a Glance</div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
               {branches.map(b => (
-                <div key={b.name} style={{ background:"#0f172a", border:"1px solid #1a2640", borderRadius:12, padding:"14px 16px", borderLeft:`3px solid ${PALETTE[b.name]}` }}>
+                <div
+                  key={b.name}
+                  onClick={() => setBranch(b.name)}
+                  style={{
+                    background: branch === b.name ? "#0f1e35" : "#0f172a",
+                    border: `1px solid ${branch === b.name ? PALETTE[b.name] + "55" : "#1a2640"}`,
+                    borderRadius: 12,
+                    padding: "14px 16px",
+                    borderLeft: `3px solid ${PALETTE[b.name]}`,
+                    cursor: "pointer",
+                    transition: ".15s",
+                  }}
+                >
                   <div style={{ fontSize:12, fontWeight:600, color:"#94a3b8", marginBottom:8 }}>{b.name}</div>
                   <div style={{ fontSize:18, fontWeight:600, fontFamily:"'DM Mono',monospace", color:"#f1f5f9", letterSpacing:"-.03em" }}>{fmt(b.sales)}</div>
                   <div style={{ display:"flex", justifyContent:"space-between", marginTop:8 }}>
