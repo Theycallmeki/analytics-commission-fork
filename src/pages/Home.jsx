@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import logoSrc    from "../assets/business logo.jpeg";
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -23,41 +24,91 @@ const css = `
 
 .home { min-height: 100vh; background: #080c14; color: #e2e8f0; font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
 
-/* NAV */
-.home-nav {
+.db-topbar {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 22px 32px;
+  gap: 18px;
+  padding: 14px 28px;
+  background: #080c14;
   border-bottom: 1px solid #1a2640;
   position: sticky;
   top: 0;
-  background: #080c14;
-  z-index: 100;
+  z-index: 50;
 }
-.nav-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.nav-dot {
-  width: 10px;
-  height: 10px;
+
+.db-logo-ring {
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  background: #6366f1;
+  padding: 2px;
   flex-shrink: 0;
-  animation: dotPulse 2.4s ease-in-out infinite;
+  background: linear-gradient(135deg, #6366f1, #1a2640, #6366f1);
 }
-.nav-logo {
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  background: linear-gradient(90deg, #f1f5f9 0%, #818cf8 35%, #f1f5f9 55%, #818cf8 100%);
+
+.db-logo-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #060a12;
+}
+
+.db-logo-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.db-topbar-center {
+  flex: 1;
+  text-align: center;
+}
+
+.db-top-eyebrow {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #475569;
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 2px;
+}
+
+.db-top-title {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg,#f1f5f9 0%,#818cf8 38%,#f1f5f9 58%,#818cf8 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: shimmer 4s linear 0.5s infinite, navGlow 3.5s ease-in-out 0.5s infinite;
+  animation: shimmer 5s linear .5s infinite;
+}
+
+.db-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.db-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.db-badge {
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 99px;
+  background: #0d1625;
+  border: 1px solid #1a2640;
+  color: #475569;
+  font-family: 'DM Mono', monospace;
 }
 
 /* HERO */
@@ -240,13 +291,30 @@ export default function Home() {
       <style>{css}</style>
       <div className="home">
 
-        {/* NAV — centered, shimmer + glow on brand name */}
-        <nav className="home-nav">
-          <div className="nav-brand">
-            <div className="nav-dot" />
-            <span className="nav-logo">Likha Organika</span>
-          </div>
-        </nav>
+{/* NAV — topbar with logo on left */}
+<nav className="home-nav">
+  <div className="db-topbar">
+
+    {/* Logo on left */}
+    <div className="db-logo-ring">
+      <div className="db-logo-inner">
+        <img src={logoSrc} alt="Likha Organika" />
+      </div>
+    </div>
+
+    {/* Brand name / title */}
+    <div className="db-topbar-center">
+      <div className="db-top-title">Likha Organika</div>
+    </div>
+
+    {/* Optional right side */}
+    <div className="db-topbar-right">
+      <div className="db-live-dot" />
+      <div className="db-badge">2022 – 2025 · 0 records</div>
+    </div>
+
+  </div>
+</nav>
 
         {/* HERO */}
         <div className="hero">
