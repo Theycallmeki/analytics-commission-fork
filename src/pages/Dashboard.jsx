@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import { CartesianGrid } from 'recharts';
 import {
   LineChart, Line, BarChart, Bar,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 
 import excelFile from "../assets/exempted latest.xlsm?url";
@@ -16,6 +16,9 @@ const PALETTE = {
   Pampanga:   "#f59e0b",
   Pangasinan: "#f43f5e",
 };
+
+/* ── Shared second-series color — Sales / Expenses / Profit always match ── */
+const SALES_COLOR = "#02a4d5";
 
 const MONTH_ORDER = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -56,8 +59,8 @@ function processSheet(rows) {
     scoreSum:  data.reduce((s, r) => s + (r["Score"]          || 0), 0),
     scoreCount:data.length,
   };
-  totals.avgScore   = +(totals.scoreSum / totals.scoreCount).toFixed(2);
-  totals.profitPct  = +((totals.profit / totals.sales) * 100).toFixed(1);
+  totals.avgScore  = +(totals.scoreSum / totals.scoreCount).toFixed(2);
+  totals.profitPct = +((totals.profit / totals.sales) * 100).toFixed(1);
 
   const byBranch = {};
   data.forEach(r => {
@@ -112,8 +115,8 @@ function processSheet(rows) {
     .map(s => ({ cat: s.cat, score: +(s.scoreSum / s.count).toFixed(2) }))
     .sort((a, b) => b.score - a.score);
 
-return { totals, branches, monthly, satisfaction, rowCount: data.length, raw:data };}
-
+  return { totals, branches, monthly, satisfaction, rowCount: data.length, raw: data };
+}
 
 /* ── CSS ── */
 const css = `
@@ -229,24 +232,12 @@ body { background:#060a12; }
 .legend-item { display:flex; align-items:center; gap:5px; font-size:11px; color:#94a3b8; font-family:'DM Mono',monospace; white-space:nowrap; }
 .legend-dot  { width:9px; height:9px; border-radius:2px; flex-shrink:0; }
 
-/* ── BRANCH BAR ROWS ── */
-.br-row  { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid #0f1c2e; }
-.br-row:last-child { border-bottom:none; }
-.br-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-.br-name { font-size:13px; font-weight:600; color:#f1f5f9; width:82px; flex-shrink:0; }
-.br-track{ flex:1; height:6px; background:#1a2640; border-radius:99px; overflow:hidden; }
-.br-fill { height:100%; border-radius:99px; }
-.br-val  { font-size:12px; font-family:'DM Mono',monospace; color:#f1f5f9; width:72px; text-align:right; }
-.br-pill { font-size:11px; font-weight:600; padding:2px 8px; border-radius:99px; font-family:'DM Mono',monospace; white-space:nowrap; }
-.pill-g  { background:rgba(16,185,129,.15); color:#10b981; border:1px solid rgba(16,185,129,.3); }
-.pill-a  { background:rgba(245,158,11,.15); color:#f59e0b; border:1px solid rgba(245,158,11,.3); }
-
 /* ── SATISFACTION ── */
 .sat-row  { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid #0f1c2e; }
 .sat-row:last-child { border-bottom:none; }
 .sat-name { font-size:13px; font-weight:500; color:#f1f5f9; width:82px; flex-shrink:0; }
 .sat-track{ flex:1; height:7px; background:#1a2640; border-radius:99px; overflow:hidden; }
-.sat-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#4f46e5,#818cf8); }
+.sat-fill { height:100%; border-radius:99px; }
 .sat-val  { font-size:13px; font-weight:600; font-family:'DM Mono',monospace; color:#f1f5f9; width:32px; text-align:right; }
 
 /* ── GLANCE GRID ── */
@@ -360,43 +351,68 @@ export default function Dashboard() {
       </div>
     </div>
   );
-const { totals, branches, monthly, satisfaction, rowCount, raw } = data;
 
-const dataSource = raw;
+  const { totals, branches, monthly, rowCount, raw } = data;
+  const dataSource = raw;
 
-const filteredMonthly = branch === "All"
-  ? monthly
-  : monthly.map((m, i) => {
-      const fullMonth = MONTH_ORDER[i];
+  /* ── branch-primary color (first bar / cost / sales-bar) ── */
+  const branchColor = branch === "All" ? "#6366f1" : PALETTE[branch];
 
-      const rows = dataSource.filter(r =>
-        r["Month"] === fullMonth && r["Branch"] === branch
-      );
+  /* ── filtered monthly: Sales vs Target ── */
+  const filteredMonthly = branch === "All"
+    ? monthly
+    : monthly.map((m, i) => {
+        const fullMonth = MONTH_ORDER[i];
+        const rows = dataSource.filter(r => r["Month"] === fullMonth && r["Branch"] === branch);
+        return {
+          m: m.m,
+          sales:  rows.reduce((s, r) => s + (r["Sales"]        || 0), 0),
+          target: rows.reduce((s, r) => s + (r["Target Sales"] || 0), 0),
+        };
+      });
 
-      return {
-        m: m.m,
-        sales: rows.reduce((s, r) => s + (r["Sales"] || 0), 0),
-        target: rows.reduce((s, r) => s + (r["Target Sales"] || 0), 0),
-      };
+  /* ── filtered monthly: Customer Count ── */
+  const filteredCustomerMonthly = branch === "All"
+    ? monthly
+    : monthly.map((m, i) => {
+        const fullMonth = MONTH_ORDER[i];
+        const rows = dataSource.filter(r => r["Month"] === fullMonth && r["Branch"] === branch);
+        return {
+          m: m.m,
+          customers: rows.reduce((s, r) => s + (r["Customer Count"] || 0), 0),
+        };
+      });
+
+  /* ── filtered monthly: Cost & Expenses ── */
+  const filteredCostMonthly = branch === "All"
+    ? monthly
+    : monthly.map((m, i) => {
+        const fullMonth = MONTH_ORDER[i];
+        const rows = dataSource.filter(r => r["Month"] === fullMonth && r["Branch"] === branch);
+        return {
+          m:        m.m,
+          cost:     rows.reduce((s, r) => s + (r["Cost"]     || 0), 0),
+          expenses: rows.reduce((s, r) => s + (r["Expenses"] || 0), 0),
+        };
+      });
+
+  /* ── filtered satisfaction ── */
+  const filteredSatisfaction = (() => {
+    const sourceRows = branch === "All" ? dataSource : dataSource.filter(r => r["Branch"] === branch);
+    const bySat = {};
+    sourceRows.forEach(r => {
+      const c = r["Customer Satisfaction"];
+      if (!c) return;
+      if (!bySat[c]) bySat[c] = { cat: c, scoreSum: 0, count: 0 };
+      bySat[c].scoreSum += r["Score"] || 0;
+      bySat[c].count    += 1;
     });
-
-    const filteredCustomerMonthly = branch === "All"
-  ? monthly
-  : monthly.map((m, i) => {
-      const fullMonth = MONTH_ORDER[i];
-
-      const rows = dataSource.filter(r =>
-        r["Month"] === fullMonth && r["Branch"] === branch
-      );
-
-      return {
-        m: m.m,
-        customers: rows.reduce((s, r) => s + (r["Customer Count"] || 0), 0),
-      };
-    });
+    return Object.values(bySat)
+      .map(s => ({ cat: s.cat, score: +(s.scoreSum / s.count).toFixed(2) }))
+      .sort((a, b) => b.score - a.score);
+  })();
 
   const active     = branch === "All" ? null : branches.find(b => b.name === branch);
-  const maxSales   = Math.max(...branches.map(b => b.sales));
   const branchRows = active ? [active] : branches;
   const margins    = branches.map(b => b.margin);
 
@@ -414,38 +430,38 @@ const filteredMonthly = branch === "All"
     return `on on-${b.toLowerCase()}`;
   };
 
-  const activeMargin   = active ? active.margin   : totals.profitPct;
-  const activeScore    = active ? active.score     : totals.avgScore;
-  const activeCustomers= active ? active.customers : totals.customers;
+  const activeMargin    = active ? active.margin    : totals.profitPct;
+  const activeScore     = active ? active.score     : totals.avgScore;
+  const activeCustomers = active ? active.customers : totals.customers;
 
   const kpis = [
     {
-      label:"Total Sales",    icon:<SalesIcon/>,    iconBg:"rgba(99,102,241,.14)",
+      label:"Total Sales",     icon:<SalesIcon/>,    iconBg:"rgba(99,102,241,.14)",
       value: fmt(active ? active.sales   : totals.sales),
       sub:   `Target ${fmt(active ? active.target : totals.target)}`,
     },
     {
-      label:"Total Profit",   icon:<ProfitIcon/>,   iconBg:"rgba(16,185,129,.12)",
+      label:"Total Profit",    icon:<ProfitIcon/>,   iconBg:"rgba(16,185,129,.12)",
       value: fmt(active ? active.profit  : totals.profit),
       sub:   `Hit rate ${active ? active.hitRate : ((totals.sales/totals.target)*100).toFixed(1)}%`,
     },
     {
-      label:"Customer Count", icon:<CustomerIcon/>, iconBg:"rgba(245,158,11,.12)",
+      label:"Customer Count",  icon:<CustomerIcon/>, iconBg:"rgba(245,158,11,.12)",
       value: fmtN(activeCustomers),
       sub:   "Total served",
     },
     {
-      label:"Target Sales",   icon:<TargetIcon/>,   iconBg:"rgba(244,63,94,.12)",
+      label:"Target Sales",    icon:<TargetIcon/>,   iconBg:"rgba(244,63,94,.12)",
       value: fmt(active ? active.target  : totals.target),
       sub:   `${active ? active.hitRate : ((totals.sales/totals.target)*100).toFixed(1)}% achieved`,
     },
     {
-      label:"Profit Margin",  icon:<MarginIcon/>,   iconBg:"rgba(167,139,250,.12)",
+      label:"Profit Margin",   icon:<MarginIcon/>,   iconBg:"rgba(167,139,250,.12)",
       value: `${activeMargin}%`,
       sub:   "Net margin rate",
     },
     {
-      label:"Avg Satisfaction",icon:<ScoreIcon/>,   iconBg:"rgba(244,114,182,.12)",
+      label:"Avg Satisfaction",icon:<ScoreIcon/>,    iconBg:"rgba(244,114,182,.12)",
       value: activeScore.toFixed(2),
       sub:   "Out of 10 scale",
     },
@@ -505,75 +521,38 @@ const filteredMonthly = branch === "All"
           {/* TOP CHART ROW */}
           <div className="chart-row-top">
 
-          {/* ① Sales vs Target */}
-                <div className="card" style={{ animationDelay:"0s" }}>
-                <div className="card-header">
-                    <span className="card-title">Sales vs Target per Month</span>
-
-                    <div className="legend-row">
-                    <span className="legend-item">
-                        <span
-                        className="legend-dot"
-                        style={{ background:"#02a4d5" }}
-                        />
-                        Sales
-                    </span>
-
-                    <span className="legend-item">
-                        <span
-                        className="legend-dot"
-                        style={{ background: branch === "All" ? "#10b981" : PALETTE[branch] }}
-                        />
-                        Target
-                    </span>
-                    </div>
+            {/* ① Sales vs Target */}
+            <div className="card" style={{ animationDelay:"0s" }}>
+              <div className="card-header">
+                <span className="card-title">Sales vs Target per Month</span>
+                <div className="legend-row">
+                  <span className="legend-item">
+                    <span className="legend-dot" style={{ background: SALES_COLOR }}/>Sales
+                  </span>
+                  <span className="legend-item">
+                    <span className="legend-dot" style={{ background: branchColor }}/>Target
+                  </span>
                 </div>
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={filteredMonthly} margin={{ top:4, right:4, left:-14, bottom:0 }} barCategoryGap="25%" barGap={3}>
+                  <XAxis dataKey="m" tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}K`} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill:"rgba(255,255,255,.03)" }} />
+                  <Bar dataKey="target" name="Target" fill={branchColor} />
+                  <Bar dataKey="sales"  name="Sales"  fill={SALES_COLOR} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
-                <ResponsiveContainer width="100%" height={200}>
-                    <BarChart
-                    data={filteredMonthly}
-                    margin={{ top:4, right:4, left:-14, bottom:0 }}
-                    barCategoryGap="25%"
-                    barGap={3}
-                    >
-                    <XAxis
-                        dataKey="m"
-                        tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }}
-                        axisLine={false}
-                        tickLine={false}
-                    />
-
-                    <YAxis
-                        tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }}
-                        axisLine={false}
-                        tickLine={false}
-                        tickFormatter={v => `${(v/1000).toFixed(0)}K`}
-                    />
-
-                    <Tooltip
-                        content={<CustomTooltip />}
-                        cursor={{ fill:"rgba(255,255,255,.03)" }}
-                    />
-
-                    {/* Target */}
-                 <Bar
-                    dataKey="target"
-                    name="Target"
-                    fill={PALETTE[branch] || "#10b981"}                    />
-
-                    <Bar
-                    dataKey="sales"
-                    name="Sales"
-                    fill="#02a4d5"   // fixed color (consistent everywhere)
-                    />
-                    </BarChart>
-                </ResponsiveContainer>
-                </div>
-                {/* ② Customer Count */}
+            {/* ② Customer Count */}
             <div className="card" style={{ animationDelay:".06s" }}>
               <div className="card-header">
                 <span className="card-title">Customer Count by Month</span>
                 <div className="legend-row">
+                  <span className="legend-item">
+                    <span className="legend-dot" style={{ background: branchColor }}/>Customers
+                  </span>
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={200}>
@@ -581,71 +560,40 @@ const filteredMonthly = branch === "All"
                   <XAxis dataKey="m" tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(1)}K`} />
                   <Tooltip content={<CustomTooltip />} cursor={{ stroke:"rgba(245,158,11,.2)", strokeWidth:1 }} />
-                 <Line
-                        type="monotone"
-                        dataKey="customers"
-                        name="Customers"
-                        stroke={branch === "All" ? "#f59e0b" : PALETTE[branch]}
-                        strokeWidth={2.5}
-                        dot={{
-                            r:3,
-                            fill: branch === "All" ? "#f59e0b" : PALETTE[branch],
-                            strokeWidth:0
-                        }}
-                        activeDot={{ r:5 }}
-                        />
+                  <Line
+                    type="monotone" dataKey="customers" name="Customers"
+                    stroke={branch === "All" ? "#f59e0b" : PALETTE[branch]}
+                    strokeWidth={2.5}
+                    dot={{ r:3, fill: branch === "All" ? "#f59e0b" : PALETTE[branch], strokeWidth:0 }}
+                    activeDot={{ r:5 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
- {/* ③ Cost & Expenses — stacked layout so both are always visible */}
-<div className="card" style={{ animationDelay:".12s" }}>
-  <div className="card-header">
-    <span className="card-title">Cost &amp; Expenses</span>
-        <div className="legend-row">
-        <span className="legend-item">
-            <span
-            className="legend-dot"
-            style={{
-                background: branch === "All" ? "#f59e0b" : PALETTE[branch],
-                borderRadius:"50%"
-            }}
-            />
-            Customers
-        </span>
-        </div>
-  </div>
-
-  <ResponsiveContainer width="100%" height={200}>
-    <BarChart
-      data={monthly}
-      margin={{ top:4, right:4, left:-14, bottom:0 }}
-      barCategoryGap="25%"
-      barGap={3}
-    >
-      {/* Horizontal grid lines */}
-                <CartesianGrid horizontal={true} vertical={false} stroke="#334155" strokeDasharray="3 3" />
-
-                <XAxis 
-                    dataKey="m" 
-                    tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} 
-                    axisLine={false} 
-                    tickLine={false} 
-                />
-                <YAxis 
-                    tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tickFormatter={v => `${(v/1000).toFixed(0)}K`} 
-                />
-
-                <Tooltip content={<CustomTooltip />} cursor={{ fill:"rgba(255,255,255,.03)" }} />
-
-                <Bar dataKey="cost"     name="Cost"     fill="#6366f1" radius={[3,3,0,0]} maxBarSize={14} />
-                <Bar dataKey="expenses" name="Expenses" fill="#10b981" radius={[3,3,0,0]} maxBarSize={14} opacity={0.85} />
-
+            {/* ③ Cost & Expenses — Cost = branchColor, Expenses = SALES_COLOR */}
+            <div className="card" style={{ animationDelay:".12s" }}>
+              <div className="card-header">
+                <span className="card-title">Cost &amp; Expenses</span>
+                <div className="legend-row">
+                  <span className="legend-item">
+                    <span className="legend-dot" style={{ background: branchColor }}/>Cost
+                  </span>
+                  <span className="legend-item">
+                    <span className="legend-dot" style={{ background: SALES_COLOR }}/>Expenses
+                  </span>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={filteredCostMonthly} margin={{ top:4, right:4, left:-14, bottom:0 }} barCategoryGap="25%" barGap={3}>
+                  <CartesianGrid horizontal={true} vertical={false} stroke="#334155" strokeDasharray="3 3" />
+                  <XAxis dataKey="m" tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}K`} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill:"rgba(255,255,255,.03)" }} />
+                  <Bar dataKey="cost"     name="Cost"     fill={branchColor}  radius={[3,3,0,0]} maxBarSize={14} />
+                  <Bar dataKey="expenses" name="Expenses" fill={SALES_COLOR}  radius={[3,3,0,0]} maxBarSize={14} opacity={0.85} />
                 </BarChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -656,127 +604,104 @@ const filteredMonthly = branch === "All"
             <div className="card" style={{ animationDelay:".18s" }}>
               <div className="card-header">
                 <span className="card-title">Customer Satisfaction Score</span>
-                <span style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Mono',monospace" }}>out of 10</span>
+                <div className="legend-row">
+                  <span className="legend-item">
+                    <span className="legend-dot" style={{ background: branchColor, borderRadius:"50%" }}/>
+                    {branch === "All" ? "All Branches" : branch}
+                  </span>
+                </div>
               </div>
-              {satisfaction.map(s => (
+              {filteredSatisfaction.map(s => (
                 <div className="sat-row" key={s.cat}>
                   <span className="sat-name">{s.cat}</span>
                   <div className="sat-track">
-                    <div className="sat-fill" style={{ width:`${(s.score/10)*100}%` }}/>
+                    <div
+                      className="sat-fill"
+                      style={{
+                        width: `${(s.score / 10) * 100}%`,
+                        background: branch === "All"
+                          ? "linear-gradient(90deg,#4f46e5,#818cf8)"
+                          : `linear-gradient(90deg,${branchColor}cc,${branchColor})`,
+                      }}
+                    />
                   </div>
                   <span className="sat-val">{s.score.toFixed(1)}</span>
                 </div>
               ))}
             </div>
 
-          {/* ⑤ Profit vs Sales by Branch — grouped horizontal bar chart */}
+            {/* ⑤ Profit vs Sales by Branch — Sales = branchColor, Profit = SALES_COLOR */}
             <div className="card" style={{ animationDelay:".24s" }}>
-            <div className="card-header">
+              <div className="card-header">
                 <span className="card-title">Profit vs Sales by Branch</span>
                 <div className="legend-row">
-                <span className="legend-dot" style={{ background:"#02a4d5" }}/>   
-            <span className="legend-item"><span className="legend-dot" style={{ background:"#10b981" }}/>Profit</span>
+                  <span className="legend-item"><span className="legend-dot" style={{ background: branchColor }}/>Sales</span>
+                  <span className="legend-item"><span className="legend-dot" style={{ background: SALES_COLOR }}/>Profit</span>
                 </div>
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={branchBarData} layout="vertical" margin={{ top:0, right:8, left:0, bottom:0 }} barCategoryGap="20%" barGap={4}>
+                  <CartesianGrid vertical={true} horizontal={false} stroke="#334155" strokeDasharray="3 3" />
+                  <XAxis type="number" tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1_000_000).toFixed(1)}M`} />
+                  <YAxis type="category" dataKey="name" tick={{ fill:"#f1f5f9", fontSize:12, fontFamily:"'DM Sans'", fontWeight:600 }} axisLine={false} tickLine={false} width={80} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill:"rgba(255,255,255,.03)" }} />
+                  <Bar dataKey="Sales"  name="Sales"  fill={branchColor}  radius={[0,4,4,0]} maxBarSize={13} />
+                  <Bar dataKey="Profit" name="Profit" fill={SALES_COLOR}  radius={[0,4,4,0]} maxBarSize={13} opacity={0.85} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="stat-strip">
+                <div className="stat-item">
+                  <div className="stat-v">{fmt(active ? active.profit : totals.profit)}</div>
+                  <div className="stat-l">Total Profit</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-v">{activeMargin}%</div>
+                  <div className="stat-l">Avg Margin</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-v">{Math.max(...margins).toFixed(1)}%</div>
+                  <div className="stat-l">Best Branch</div>
+                </div>
+              </div>
             </div>
 
-  {/* Responsive container restored */}
-  <ResponsiveContainer width="100%" height={200}>
-    <BarChart
-      data={branchBarData}
-      layout="vertical"
-      margin={{ top:0, right:8, left:0, bottom:0 }}
-      barCategoryGap="20%"
-      barGap={4}
-    >
-      {/* Vertical grid lines */}
-      <CartesianGrid vertical={true} horizontal={false} stroke="#334155" strokeDasharray="3 3" />
-
-      <XAxis
-        type="number"
-        tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }}
-        axisLine={false}
-        tickLine={false}
-        tickFormatter={v => `${(v/1_000_000).toFixed(1)}M`}
-      />
-
-      <YAxis
-        type="category"
-        dataKey="name"
-        tick={{ fill:"#f1f5f9", fontSize:12, fontFamily:"'DM Sans'", fontWeight:600 }}
-        axisLine={false}
-        tickLine={false}
-        width={80}
-      />
-
-      <Tooltip content={<CustomTooltip />} cursor={{ fill:"rgba(255,255,255,.03)" }} />
-
-      {/* Sales */}
-      <Bar
-        dataKey="Sales"
-        fill={branch === "All" ? "#6366f1" : PALETTE[branch]}
-        radius={[0,4,4,0]}
-        maxBarSize={13}
-        />
-
-      {/* Profit */}
-      <Bar dataKey="Profit" fill="#10b981" radius={[0,4,4,0]} maxBarSize={13} opacity={0.85} />
-
-    </BarChart>
-  </ResponsiveContainer>
-
-  <div className="stat-strip">
-    <div className="stat-item">
-      <div className="stat-v">{fmt(active ? active.profit : totals.profit)}</div>
-      <div className="stat-l">Total Profit</div>
-    </div>
-    <div className="stat-item">
-      <div className="stat-v">{activeMargin}%</div>
-      <div className="stat-l">Avg Margin</div>
-    </div>
-    <div className="stat-item">
-      <div className="stat-v">{Math.max(...margins).toFixed(1)}%</div>
-      <div className="stat-l">Best Branch</div>
-    </div>
-  </div>
-</div>
-           {/* ⑥ Branch at a Glance — all text white */}
-<div className="card" style={{ animationDelay:".3s" }}>
-  <div className="card-header">
-    <span className="card-title">Branch at a Glance</span>
-    <span style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Mono',monospace" }}>click to filter</span>
-  </div>
-
-  <div className="glance-grid">
-    {branches.map(b => (
-      <div
-        key={b.name}
-        className="glance-card"
-        onClick={() => setBranch(b.name)}
-        style={{
-          background: branch === b.name ? "#0f1e35" : "#0f172a",
-          border: `1px solid ${branch === b.name ? PALETTE[b.name]+"FF" : "#1a2640"}`,
-          borderLeft: `3px solid ${branch === b.name ? PALETTE[b.name]+"FF" : PALETTE[b.name]+"88"}`,
-          color: "#fff"
-        }}
-      >
-        <div className="glance-name">{b.name}</div>
-        <div className="glance-val">{fmt(b.sales)}</div>
-        <div className="glance-row">
-          <span className="glance-lbl">Score</span>
-          <span className="glance-num">{b.score.toFixed(2)}</span>
-        </div>
-        <div className="glance-row">
-          <span className="glance-lbl">Margin</span>
-          <span className="glance-num">{b.margin}%</span>
-        </div>
-        <div className="glance-row">
-          <span className="glance-lbl">Customers</span>
-          <span className="glance-num">{fmtN(b.customers)}</span>
-        </div>
-      </div>
-    ))}
-  </div>
-</div>
+            {/* ⑥ Branch at a Glance */}
+            <div className="card" style={{ animationDelay:".3s" }}>
+              <div className="card-header">
+                <span className="card-title">Branch at a Glance</span>
+                <span style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Mono',monospace" }}>click to filter</span>
+              </div>
+              <div className="glance-grid">
+                {branches.map(b => (
+                  <div
+                    key={b.name}
+                    className="glance-card"
+                    onClick={() => setBranch(b.name)}
+                    style={{
+                      background:  branch === b.name ? "#0f1e35" : "#0f172a",
+                      border:      `1px solid ${branch === b.name ? PALETTE[b.name]+"FF" : "#1a2640"}`,
+                      borderLeft:  `3px solid ${branch === b.name ? PALETTE[b.name]+"FF" : PALETTE[b.name]+"88"}`,
+                      color: "#fff",
+                    }}
+                  >
+                    <div className="glance-name">{b.name}</div>
+                    <div className="glance-val">{fmt(b.sales)}</div>
+                    <div className="glance-row">
+                      <span className="glance-lbl">Score</span>
+                      <span className="glance-num">{b.score.toFixed(2)}</span>
+                    </div>
+                    <div className="glance-row">
+                      <span className="glance-lbl">Margin</span>
+                      <span className="glance-num">{b.margin}%</span>
+                    </div>
+                    <div className="glance-row">
+                      <span className="glance-lbl">Customers</span>
+                      <span className="glance-num">{fmtN(b.customers)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
           </div>
         </div>
