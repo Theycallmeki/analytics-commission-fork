@@ -379,6 +379,22 @@ const filteredMonthly = branch === "All"
         target: rows.reduce((s, r) => s + (r["Target Sales"] || 0), 0),
       };
     });
+
+    const filteredCustomerMonthly = branch === "All"
+  ? monthly
+  : monthly.map((m, i) => {
+      const fullMonth = MONTH_ORDER[i];
+
+      const rows = dataSource.filter(r =>
+        r["Month"] === fullMonth && r["Branch"] === branch
+      );
+
+      return {
+        m: m.m,
+        customers: rows.reduce((s, r) => s + (r["Customer Count"] || 0), 0),
+      };
+    });
+
   const active     = branch === "All" ? null : branches.find(b => b.name === branch);
   const maxSales   = Math.max(...branches.map(b => b.sales));
   const branchRows = active ? [active] : branches;
@@ -558,15 +574,26 @@ const filteredMonthly = branch === "All"
               <div className="card-header">
                 <span className="card-title">Customer Count by Month</span>
                 <div className="legend-row">
-                  <span className="legend-item"><span className="legend-dot" style={{ background:"#f59e0b", borderRadius:"50%" }}/>Customers</span>
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={monthly} margin={{ top:4, right:8, left:-14, bottom:0 }}>
+                <LineChart data={filteredCustomerMonthly} margin={{ top:4, right:8, left:-14, bottom:0 }}>
                   <XAxis dataKey="m" tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill:"#64748b", fontSize:10, fontFamily:"'DM Mono'" }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(1)}K`} />
                   <Tooltip content={<CustomTooltip />} cursor={{ stroke:"rgba(245,158,11,.2)", strokeWidth:1 }} />
-                  <Line type="monotone" dataKey="customers" name="Customers" stroke="#f59e0b" strokeWidth={2.5} dot={{ r:3, fill:"#f59e0b", strokeWidth:0 }} activeDot={{ r:5 }} />
+                 <Line
+                        type="monotone"
+                        dataKey="customers"
+                        name="Customers"
+                        stroke={branch === "All" ? "#f59e0b" : PALETTE[branch]}
+                        strokeWidth={2.5}
+                        dot={{
+                            r:3,
+                            fill: branch === "All" ? "#f59e0b" : PALETTE[branch],
+                            strokeWidth:0
+                        }}
+                        activeDot={{ r:5 }}
+                        />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -575,16 +602,18 @@ const filteredMonthly = branch === "All"
 <div className="card" style={{ animationDelay:".12s" }}>
   <div className="card-header">
     <span className="card-title">Cost &amp; Expenses</span>
-    <div className="legend-row">
-      <span
-        className="legend-dot"
-        style={{ background:"#02a4d5" }}   // Sales (fixed color)
-        />
-
-        <span
-        className="legend-dot"
-        style={{ background: PALETTE[branch] || "#10b981" }}        />
-    </div>
+        <div className="legend-row">
+        <span className="legend-item">
+            <span
+            className="legend-dot"
+            style={{
+                background: branch === "All" ? "#f59e0b" : PALETTE[branch],
+                borderRadius:"50%"
+            }}
+            />
+            Customers
+        </span>
+        </div>
   </div>
 
   <ResponsiveContainer width="100%" height={200}>
